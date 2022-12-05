@@ -1,0 +1,3 @@
+C:/projects/min_max/cmake-build-debug/CMakeFiles/min_max.dir
+C:/projects/min_max/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/projects/min_max/cmake-build-debug/CMakeFiles/rebuild_cache.dir
