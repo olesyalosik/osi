@@ -4,11 +4,19 @@
 
 using namespace std;
 
-int main(int argc, char *argv[]) {
-    char* filename = argv[1];
-    FILE* out;
+void writeMsg(FILE *out, const char *msg) {
+    unsigned long long msgLen = strlen(msg) + 1;
+    fwrite(&msgLen, sizeof(msgLen), 1, out);
+    for (int i = 0; i < msgLen; i++) {
+        fwrite(&msg[i], sizeof(char), 1, out);
+    }
+}
 
-    char* senderIndexStr = argv[2];
+int main(int argc, char *argv[]) {
+    const char *filename = argv[1];
+    FILE *out;
+
+    const char *senderIndexStr = argv[2];
 
     char *readyName = new char[20];
     char *continueName = new char[20];
@@ -19,8 +27,6 @@ int main(int argc, char *argv[]) {
     strcat(readyName, senderIndexStr);
     strcat(continueName, senderIndexStr);
     strcat(finishName, senderIndexStr);
-
-    cout << readyName << endl;
 
     HANDLE senderReady = OpenEvent(EVENT_ALL_ACCESS, EVENT_MODIFY_STATE, readyName);
     HANDLE senderContinue = OpenEvent(EVENT_ALL_ACCESS, EVENT_MODIFY_STATE, continueName);
@@ -70,18 +76,10 @@ int main(int argc, char *argv[]) {
                 else
                     break;
             }
-            else
-            {
+            else {
                 ReleaseSemaphore(senderSemaphore, 1, NULL);
-                int msgLen = strlen(msg) + 1;
-                //cout << "Ready to write" << endl;
-                fwrite(&msgLen, sizeof(msgLen), 1, out);
-                //cout << "Successfully written length" << endl;
-                for (int i = 0; i < msgLen; i++)
-                {
-                    fwrite(&msg[i], sizeof(char), 1, out);
-                }
-                //cout << "Successfully written msg" << endl;
+
+                writeMsg(out, msg);
 
                 fclose(out);
                 delete[] msg;
@@ -89,6 +87,10 @@ int main(int argc, char *argv[]) {
                 continue;
             }
         }
-    }while(true);
+    } while (true);
+
+    delete[] readyName;
+    delete[] continueName;
+    delete[] finishName;
 
 }

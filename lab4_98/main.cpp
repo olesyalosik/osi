@@ -14,9 +14,53 @@ bool checkProcesses(vector<bool> isFinished) {
     return true;
 }
 
+char getCmd() {
+    char cmd;
+    cout << "Enter 'r' to read messages from file or 'q' to stop processes" << endl;
+    do {
+        cin >> cmd;
+        if (cmd != 'q' && cmd != 'r') {
+            cout << "Wrong command, try again!" << endl;
+            continue;
+        }
+    } while (!(cmd == 'q' || cmd == 'r'));
+
+    return cmd;
+}
+
+void processCmd(FILE *in) {
+    char *msg = new char[20];
+    int msgLength = 0;
+    fread(&msgLength, sizeof(msgLength), 1, in);
+    for (int i = 0; i < msgLength; i++) {
+        fread(&msg[i], sizeof(char), 1, in);
+    }
+
+    cout << msg << endl;
+
+    delete[] msg;
+}
+
+void quitSenders(int numberOfSenders, vector<bool> isFinished, HANDLE *senderContinue, HANDLE *senderFinish,
+                 PROCESS_INFORMATION *pi) {
+    for (int i = 0; i < numberOfSenders; i++)
+        if (!isFinished[i]) {
+
+            //Wait for process to quit
+            SetEvent(senderContinue[i]);
+            Sleep(25);
+            SetEvent(senderFinish[i]);
+            Sleep(25);
+
+            CloseHandle(pi[i].hProcess);
+            CloseHandle(pi[i].hThread);
+        }
+}
+
 int main() {
     char *filename = new char[50];
-    int numberOfStrings, numberOfSenders;
+    int numberOfStrings;
+    int numberOfSenders;
     FILE *in;
 
 
@@ -64,12 +108,25 @@ int main() {
             delete[] senderContinue;
             delete[] senderFinish;
 
+            delete[] senderIndex;
+            delete[] readyName;
+            delete[] continueName;
+            delete[] finishName;
+
+            delete[] filename;
+
             return 0;
         }
 
         strcat(processArgs[i], filename);
         strcat(processArgs[i], " ");
         strcat(processArgs[i], senderIndex);
+
+        delete[] senderIndex;
+        delete[] readyName;
+        delete[] continueName;
+        delete[] finishName;
+
     }
 
     HANDLE stringSemaphore = CreateSemaphore(NULL, numberOfStrings, numberOfStrings, "stringSemaphore");
@@ -80,6 +137,7 @@ int main() {
         delete[] isSenderReady;
         delete[] senderContinue;
         delete[] senderFinish;
+        delete[] filename;
         return 0;
     }
 
@@ -113,19 +171,20 @@ int main() {
             delete[] isSenderReady;
             delete[] senderContinue;
             delete[] senderFinish;
+            delete[] filename;
 
             return 0;
         }
     }
-
-    char cmd;
 
     while (!checkProcesses(isFinished)) {
         for (int i = 0; i < numberOfSenders; i++) {
             if (!isFinished[i]) {
                 WaitForSingleObject(isSenderReady[i], INFINITE);
 
-                if (WaitForSingleObject(senderFinish[i], 25) != WAIT_TIMEOUT) {
+                DWORD finishTimeout = WaitForSingleObject(senderFinish[i], 25);
+
+                if (finishTimeout != WAIT_TIMEOUT) {
 
                     isFinished[i] = true;
 
@@ -136,49 +195,17 @@ int main() {
             }
         }
 
-        cout << "Enter 'r' to read messages from file or 'q' to stop processes" << endl;
-        do {
-            cin >> cmd;
-            if (cmd != 'q' && cmd != 'r') {
-                cout << "Wrong command, try again!" << endl;
-                continue;
-            }
-        } while (!(cmd == 'q' || cmd == 'r'));
+        char cmd = getCmd();
 
         if (cmd == 'q') {
-            for (int i = 0; i < numberOfSenders; i++)
-                if (!isFinished[i]) {
-
-                    //Wait for process to quit
-                    SetEvent(senderContinue[i]);
-                    Sleep(25);
-                    SetEvent(senderFinish[i]);
-                    Sleep(25);
-
-                    CloseHandle(pi[i].hProcess);
-                    CloseHandle(pi[i].hThread);
-                }
+            quitSenders(numberOfSenders, isFinished, senderContinue, senderFinish, pi);
             break;
-        }
-
-
-
-        if (cmd == 'r') {
+        } else {
             fopen_s(&in, filename, "rb");
-            char *msg = new char[20];
             while (WaitForSingleObject(senderSemaphore, 30) != WAIT_TIMEOUT) {
-
-                int msgLength = 0;
-                fread(&msgLength, sizeof(msgLength), 1, in);
-                for (int i = 0; i < msgLength; i++)
-                {
-                    fread(&msg[i], sizeof(char), 1, in);
-                }
-
-                cout << msg << endl;
+                processCmd(in);
             }
             fclose(in);
-            delete[] msg;
             ReleaseSemaphore(stringSemaphore, numberOfStrings, NULL);
 
             for (int i = 0; i < numberOfSenders; i++) {
@@ -202,6 +229,7 @@ int main() {
 
     delete[] senderContinue;
     delete[] senderFinish;
+    delete[] filename;
 
     return 0;
 }
