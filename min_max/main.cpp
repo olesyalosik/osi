@@ -1,56 +1,62 @@
-///changes all min and max values with average value
+///changes all min and max values with findAverage value
 
 #include <iostream>
 #include <thread>
 #include <vector>
 
-using namespace std;
+using std::vector;
+using std::cout, std::cin, std::endl;
+using std::thread, std::ref;
 
-int minn, maxx, averagee;
+const int maxMinTimeout = 7;
+const int averageTimeout = 12;
 
-void min_max(vector<int> arr, int n) {
-    maxx = arr[0];
-    minn = arr[0];
-    for (int i = 0; i < n; i++) {
-        if (arr[i] > maxx) {
-            maxx = arr[i];
-            this_thread::sleep_for(chrono::milliseconds(7));
+void findMinMax(vector<int> arr, int numberOfElements, int &arrayMin, int &arrayMax) {
+    arrayMax = arr[0];
+    arrayMin = arr[0];
+    for (int i = 0; i < numberOfElements; i++) {
+        if (arr[i] > arrayMax) {
+            arrayMax = arr[i];
+            std::this_thread::sleep_for(std::chrono::milliseconds(maxMinTimeout));
         }
-        if (arr[i] < minn) {
-            minn = arr[i];
-            this_thread::sleep_for(chrono::milliseconds(7));
+        if (arr[i] < arrayMin) {
+            arrayMin = arr[i];
+            std::this_thread::sleep_for(std::chrono::milliseconds(maxMinTimeout));
         }
     }
-    cout <<"min=" <<minn << "  max=" << maxx << "\n";
+    cout << "min=" << arrayMin << "  max=" << arrayMax << "\n";
 }
 
-void average(vector<int> arr, int n) {
+void findAverage(vector<int> arr, int numberOfElements, int &arrayAverage) {
     int sum = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < numberOfElements; i++) {
         sum += arr[i];
-        this_thread::sleep_for(chrono::milliseconds(12));
+        std::this_thread::sleep_for(std::chrono::milliseconds(averageTimeout));
     }
-    averagee = sum / n;
-    cout <<"average="<< averagee << "\n";
+    arrayAverage = sum / numberOfElements;
+    cout << "findAverage=" << arrayAverage << "\n";
 }
 
 int main() {
+    int arrayMin;
+    int arrayMax;
+    int arrayAverage;
     vector<int> arr;
-    int n;
-    cin >> n;
-    arr.resize(n);
-    for (int i = 0; i < n; i++) {
+    int numberOfElements;
+    cout << "Enter number of elements: " << endl;
+    cin >> numberOfElements;
+    arr.resize(numberOfElements);
+    cout << "Enter array elements: " << endl;
+    for (int i = 0; i < numberOfElements; i++) {
         cin >> arr[i];
     }
-    thread th1(min_max, arr, n);
-    thread th2(average, arr, n);
+    thread th1(findMinMax, arr, numberOfElements, ref(arrayMin), ref(arrayMax));
+    thread th2(findAverage, arr, numberOfElements, ref(arrayAverage));
     th1.join();
     th2.join();
     for (int i: arr) {
-        if (i == minn) {
-            i = averagee;
-        } else if (i == maxx) {
-            i = averagee;
+        if (i == arrayMin || i == arrayMax) {
+            i = arrayAverage;
         }
         cout << i << " ";
     }
