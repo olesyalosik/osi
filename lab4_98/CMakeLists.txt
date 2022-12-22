@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(lab4_17)
+project(lab4_98)
 
 set(CMAKE_CXX_STANDARD 98)
 

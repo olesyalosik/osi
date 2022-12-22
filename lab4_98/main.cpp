@@ -3,7 +3,14 @@
 #include <vector>
 #include <cstring>
 
-using namespace std;
+using std::cout;
+using std::cin;
+using std::endl;
+using std::vector;
+
+const int finishTimeout = 25;
+const int semaphoreTimeout = 30;
+const int waitForSendersTimeout = 300;
 
 bool checkProcesses(vector<bool> isFinished) {
     for (int i = 0; i < isFinished.size(); i++) {
@@ -83,11 +90,16 @@ int main() {
     HANDLE *senderContinue = new HANDLE[numberOfSenders];
     HANDLE *senderFinish = new HANDLE[numberOfSenders];
 
+    char *senderIndex;
+    char *readyName;
+    char *continueName;
+    char *finishName;
+
     for (int i = 0; i < numberOfSenders; i++) {
-        char *senderIndex = new char[20];
-        char *readyName = new char[20];
-        char *continueName = new char[20];
-        char *finishName = new char[20];
+        senderIndex = new char[20];
+        readyName = new char[20];
+        continueName = new char[20];
+        finishName = new char[20];
         itoa(i + 1, senderIndex, 10);
 
         strcpy(readyName, "sender");
@@ -102,7 +114,7 @@ int main() {
         senderContinue[i] = CreateEvent(NULL, FALSE, FALSE, continueName);
         senderFinish[i] = CreateEvent(NULL, FALSE, FALSE, finishName);
 
-        if (isSenderReady[i] == NULL || senderContinue[i] == NULL || senderFinish[i] == NULL) {
+        if (NULL == isSenderReady[i] || NULL == senderContinue[i] || NULL == senderFinish[i]) {
             cout << "Event error " << GetLastError() << endl;
             delete[] isSenderReady;
             delete[] senderContinue;
@@ -132,7 +144,7 @@ int main() {
     HANDLE stringSemaphore = CreateSemaphore(NULL, numberOfStrings, numberOfStrings, "stringSemaphore");
     HANDLE senderSemaphore = CreateSemaphore(NULL, 0, numberOfStrings, "senderSemaphore");
 
-    if (stringSemaphore == NULL || senderSemaphore == NULL) {
+    if (NULL == stringSemaphore || NULL == senderSemaphore) {
         cout << "Semaphore error " << GetLastError() << endl;
         delete[] isSenderReady;
         delete[] senderContinue;
@@ -182,9 +194,7 @@ int main() {
             if (!isFinished[i]) {
                 WaitForSingleObject(isSenderReady[i], INFINITE);
 
-                DWORD finishTimeout = WaitForSingleObject(senderFinish[i], 25);
-
-                if (finishTimeout != WAIT_TIMEOUT) {
+                if (WaitForSingleObject(senderFinish[i], finishTimeout) != WAIT_TIMEOUT) {
 
                     isFinished[i] = true;
 
@@ -202,7 +212,7 @@ int main() {
             break;
         } else {
             fopen_s(&in, filename, "rb");
-            while (WaitForSingleObject(senderSemaphore, 30) != WAIT_TIMEOUT) {
+            while (WaitForSingleObject(senderSemaphore, semaphoreTimeout) != WAIT_TIMEOUT) {
                 processCmd(in);
             }
             fclose(in);
@@ -214,7 +224,7 @@ int main() {
         }
 
         //Sleep to wait for senders to continue
-        Sleep(300);
+        Sleep(waitForSendersTimeout);
 
         //Clear the file using write mode
         fopen_s(&in, filename, "wb");

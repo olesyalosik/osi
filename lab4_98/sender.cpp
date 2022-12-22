@@ -2,10 +2,15 @@
 #include <cstring>
 #include <windows.h>
 
-using namespace std;
+using std::cout;
+using std::cin;
+using std::endl;
+
+const int semaphoreTimeout = 25;
 
 void writeMsg(FILE *out, const char *msg) {
-    unsigned long long msgLen = strlen(msg) + 1;
+    //need to use int instead of ulonglong
+    int msgLen = strlen(msg) + 1;
     fwrite(&msgLen, sizeof(msgLen), 1, out);
     for (int i = 0; i < msgLen; i++) {
         fwrite(&msg[i], sizeof(char), 1, out);
@@ -37,7 +42,7 @@ int main(int argc, char *argv[]) {
 
     char cmd;
 
-    do{
+    do {
         cout << "Enter 'w' to write message to file or 'q' to stop process" << endl;
 
         do {
@@ -48,35 +53,31 @@ int main(int argc, char *argv[]) {
             }
         } while (!(cmd == 'w' || cmd == 'q'));
 
-        if (cmd == 'q')
-        {
+        if (cmd == 'q') {
             cout << "Exiting process" << endl;
             SetEvent(senderReady);
             SetEvent(senderFinish);
             break;
         }
 
-        if (cmd == 'w')
-        {
+        if (cmd == 'w') {
             fopen_s(&out, filename, "ab");
 
-            char* msg = new char[20];
+            char *msg = new char[20];
             cout << "Enter message(max msg len 20):" << endl;
             cin >> msg;
 
-            if (WaitForSingleObject(stringSemaphore, 25) == WAIT_TIMEOUT)
-            {
+            if (WaitForSingleObject(stringSemaphore, semaphoreTimeout) == WAIT_TIMEOUT) {
                 cout << "File is overloaded" << endl;
                 delete[] msg;
                 SetEvent(senderReady);
                 fclose(out);
                 WaitForSingleObject(senderContinue, INFINITE);
-                if (WaitForSingleObject(senderFinish, 25) == WAIT_TIMEOUT)
+                if (WaitForSingleObject(senderFinish, semaphoreTimeout) == WAIT_TIMEOUT)
                     continue;
                 else
                     break;
-            }
-            else {
+            } else {
                 ReleaseSemaphore(senderSemaphore, 1, NULL);
 
                 writeMsg(out, msg);
